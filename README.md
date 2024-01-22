@@ -1,2 +1,2 @@
 # abap-cheat-sheet
-Proven functional code
+Prooven functioning ABAP Code for various cases
