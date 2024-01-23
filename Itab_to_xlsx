@@ -1,6 +1,6 @@
 * Using cl_salv_table to transfrom itab to xlsx file in xstring.
 
-CLASS lcl_zip_files DEFINITION.
+CLASS lcl_convert_itab_to_xlsx DEFINITION.
   PUBLIC SECTION.
 
     METHODS:
@@ -9,7 +9,7 @@ CLASS lcl_zip_files DEFINITION.
 ENDCLASS.
 
 
-CLASS lcl_create_xlsx IMPLEMENTATION.
+CLASS lcl_convert_itab_to_xlsx IMPLEMENTATION.
   METHOD generate_xlsx_string.
 
     DATA: lo_data TYPE REF TO data.
