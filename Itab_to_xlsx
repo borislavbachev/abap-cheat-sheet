@@ -1,1 +1,36 @@
+* Using cl_salv_table to transfrom itab to xlsx file in xstring.
 
+CLASS lcl_zip_files DEFINITION.
+  PUBLIC SECTION.
+
+    METHODS:
+      generate_xlsx_string CHANGING  ct_table        TYPE table
+                           RETURNING VALUE(r_xlsx_x) TYPE xstring.
+ENDCLASS.
+
+
+CLASS lcl_create_xlsx IMPLEMENTATION.
+  METHOD generate_xlsx_string.
+
+    DATA: lo_data TYPE REF TO data.
+    DATA(l_version) = cl_salv_bs_a_xml_base=>get_version( ).
+
+    cl_salv_table=>factory( EXPORTING list_display = abap_false
+                            IMPORTING r_salv_table = DATA(lo_salv_table)
+                            CHANGING  t_table      = ct_table ).
+
+    GET REFERENCE OF ct_table INTO lo_data.
+    DATA(lo_result_data) = cl_salv_ex_util=>factory_result_data_table(
+                            r_data         = lo_data
+                            t_fieldcatalog = cl_salv_controller_metadata=>get_lvc_fieldcatalog(
+                                               r_columns      = lo_salv_table->get_columns( )
+                                               r_aggregations = lo_salv_table->get_aggregations( ) ) ).
+
+    cl_salv_bs_tt_util=>if_salv_bs_tt_util~transform( EXPORTING xml_type      = if_salv_bs_xml=>c_type_xlsx
+                                                                xml_version   = l_version
+                                                                r_result_data = lo_result_data
+                                                                xml_flavour   = if_salv_bs_c_tt=>c_tt_xml_flavour_export
+                                                                gui_type      = if_salv_bs_xml=>c_gui_type_gui
+                                                      IMPORTING xml           = r_xlsx_x ).
+  ENDMETHOD.
+ENDCLASS.
