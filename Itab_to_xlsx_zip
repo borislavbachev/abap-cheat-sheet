@@ -1,0 +1,114 @@
+* Convert ITAB to xlsx add download files as ZIP.
+* Method GENERATE_XLSX_STRING converts any itab to xlsx xstring
+* Method ADD_FILES add files to the ZIP
+* Method ZIP_FILES creates the ZIP archive for the already provided files
+
+* Class definition
+CLASS lcl_zip_files DEFINITION.
+
+  PUBLIC SECTION.
+
+    TYPES tt_sline TYPE STANDARD TABLE OF s_line WITH DEFAULT KEY.
+
+    METHODS:
+      generate_xlsx_string CHANGING  ct_table        TYPE table
+                           RETURNING VALUE(r_xlsx_x) TYPE xstring,
+
+      add_file IMPORTING i_name      TYPE string
+                         i_content_x TYPE xstring,
+      zip_files RETURNING VALUE(r_zip) TYPE tt_sline.
+
+  PRIVATE SECTION.
+    DATA: mo_zip TYPE REF TO cl_abap_zip.
+
+ENDCLASS.
+
+
+
+START-OF-SELECTION
+
+* Add files to ZIP
+  DATA(o_zip) = NEW lcl_zip_files(  ).
+
+* Add details  ZIP file
+  o_zip->add_file( i_content_x = o_zip->generate_xlsx_string( CHANGING ct_table = itab1 )
+                   i_name      = 'ITAB1.xlsx').
+
+* Add Transport Management data ZIP file
+  o_zip->add_file( i_content_x = o_zip->generate_xlsx_string( CHANGING ct_table = itab2 )
+                   i_name      = 'ITAB2.xlsx').
+
+* Archive files into ZIP
+  DATA(content_zipped) = o_zip->zip_files( ).
+
+  CALL FUNCTION 'GUI_DOWNLOAD'
+    EXPORTING
+      filename   = filename
+      filetype   = 'BIN'
+    IMPORTING
+      filelength = l_len
+    TABLES
+      data_tab   = content_zipped.
+
+  IF sy-subrc <> 0.
+  ENDIF.
+
+
+
+
+* Class Implementation
+CLASS lcl_zip_files IMPLEMENTATION.
+
+  METHOD generate_xlsx_string.
+
+    DATA: lo_data TYPE REF TO data.
+    DATA(l_version) = cl_salv_bs_a_xml_base=>get_version( ).
+
+
+    cl_salv_table=>factory( EXPORTING list_display = abap_false
+                            IMPORTING r_salv_table = DATA(lo_salv_table)
+                            CHANGING  t_table      = ct_table ).
+
+    GET REFERENCE OF ct_table INTO lo_data.
+    DATA(lo_result_data) = cl_salv_ex_util=>factory_result_data_table(
+                            r_data         = lo_data
+                            t_fieldcatalog = cl_salv_controller_metadata=>get_lvc_fieldcatalog(
+                                               r_columns      = lo_salv_table->get_columns( )
+                                               r_aggregations = lo_salv_table->get_aggregations( ) ) ).
+
+    cl_salv_bs_tt_util=>if_salv_bs_tt_util~transform( EXPORTING xml_type      = if_salv_bs_xml=>c_type_xlsx
+                                                                xml_version   = l_version
+                                                                r_result_data = lo_result_data
+                                                                xml_flavour   = if_salv_bs_c_tt=>c_tt_xml_flavour_export
+                                                                gui_type      = if_salv_bs_xml=>c_gui_type_gui
+                                                      IMPORTING xml           = r_xlsx_x ).
+  ENDMETHOD.
+
+  METHOD add_file.
+
+    IF mo_zip IS NOT BOUND.
+      mo_zip = NEW #(  ).
+    ENDIF.
+
+    mo_zip->add( EXPORTING name = i_name
+                           content = i_content_x ).
+
+  ENDMETHOD.
+
+  METHOD zip_files.
+    DATA l_len         TYPE i.
+
+    DATA(content_zip) = mo_zip->save(  ).
+
+
+    CALL FUNCTION 'SCMS_XSTRING_TO_BINARY'
+      EXPORTING
+        buffer        = content_zip
+      IMPORTING
+        output_length = l_len
+      TABLES
+        binary_tab    = r_zip.
+
+
+  ENDMETHOD.
+ENDCLASS.
